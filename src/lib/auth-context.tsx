@@ -157,6 +157,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
 export const useAuth = () => {
   const context = useContext(AuthContext);
-  if (!context) throw new Error('useAuth must be used within an AuthProvider');
+  if (!context) {
+    return {
+      user: null,
+      profile: null,
+      streak: null,
+      loading: false,
+      isDemoMode: true,
+      signInWithEmail: async () => ({ error: null }),
+      signUpWithEmail: async () => ({ error: null }),
+      signOut: async () => {},
+      useDemoAccount: () => {},
+      updateProfileName: () => {},
+    };
+  }
   return context;
 };

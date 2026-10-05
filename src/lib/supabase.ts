@@ -1,8 +1,19 @@
 import { createClient, SupabaseClient, User } from '@supabase/supabase-js';
 import type { Profile, Session, Message, Streak } from '../types/database';
 
-export const supabaseUrl = (import.meta as any).env?.VITE_SUPABASE_URL || localStorage.getItem('speakcoach_supabase_url') || '';
-export const supabaseAnonKey = (import.meta as any).env?.VITE_SUPABASE_ANON_KEY || localStorage.getItem('speakcoach_supabase_key') || '';
+function formatSupabaseUrl(input: string): string {
+  if (!input) return '';
+  input = input.trim();
+  if (input.startsWith('https://') || input.startsWith('http://')) {
+    return input;
+  }
+  // If user passed only project ref e.g. rocuawjytscomuhmfyxg
+  return `https://${input}.supabase.co`;
+}
+
+const rawUrl = (import.meta as any).env?.VITE_SUPABASE_URL || localStorage.getItem('speakcoach_supabase_url') || '';
+export const supabaseUrl = formatSupabaseUrl(rawUrl);
+export const supabaseAnonKey = ((import.meta as any).env?.VITE_SUPABASE_ANON_KEY || localStorage.getItem('speakcoach_supabase_key') || '').trim();
 
 export const isSupabaseConfigured = Boolean(
   supabaseUrl &&
@@ -12,14 +23,22 @@ export const isSupabaseConfigured = Boolean(
   !supabaseUrl.includes('your-project-id')
 );
 
-export const supabase: SupabaseClient | null = isSupabaseConfigured
-  ? createClient(supabaseUrl, supabaseAnonKey, {
+let clientInstance: SupabaseClient | null = null;
+if (isSupabaseConfigured) {
+  try {
+    clientInstance = createClient(supabaseUrl, supabaseAnonKey, {
       auth: {
         persistSession: true,
         autoRefreshToken: true,
       },
-    })
-  : null;
+    });
+  } catch (err) {
+    console.warn('Failed to initialize Supabase client:', err);
+    clientInstance = null;
+  }
+}
+
+export const supabase: SupabaseClient | null = clientInstance;
 
 // Local fallback store keys
 const STORAGE_PREFIX = 'speakcoach_';

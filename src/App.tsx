@@ -49,12 +49,22 @@ export default function App() {
         setStreak(userStreak);
         setRecentSessions(sessions);
       } else {
-        // Prompt auth modal if not logged in
-        setIsAuthModalOpen(true);
+        // If not logged in yet, load default student demo state so the user can immediately practice
+        const demoUser = DataService.signInDemo();
+        setUser(demoUser);
+        const [userProfile, userStreak, sessions] = await Promise.all([
+          DataService.getProfile(demoUser.id),
+          DataService.getStreak(demoUser.id),
+          DataService.getRecentSessions(demoUser.id, 5),
+        ]);
+        setProfile(userProfile);
+        setStreak(userStreak);
+        setRecentSessions(sessions);
       }
     } catch (err) {
       console.error('Error loading user session:', err);
-      setIsAuthModalOpen(true);
+      const demoUser = DataService.signInDemo();
+      setUser(demoUser);
     } finally {
       setIsLoadingAuth(false);
     }

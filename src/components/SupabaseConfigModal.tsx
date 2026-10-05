@@ -142,6 +142,13 @@ export const SupabaseConfigModal: React.FC<SupabaseConfigModalProps> = ({
   const [copied, setCopied] = useState(false);
   const [savedSuccess, setSavedSuccess] = useState(false);
 
+  React.useEffect(() => {
+    if (isOpen) {
+      setUrl(supabaseUrl);
+      setKey(supabaseAnonKey);
+    }
+  }, [isOpen]);
+
   if (!isOpen) return null;
 
   const handleCopySql = () => {
@@ -152,8 +159,13 @@ export const SupabaseConfigModal: React.FC<SupabaseConfigModalProps> = ({
 
   const handleSaveCredentials = (e: React.FormEvent) => {
     e.preventDefault();
-    if (url.trim()) {
-      localStorage.setItem('speakcoach_supabase_url', url.trim());
+    let cleanedUrl = url.trim();
+    if (cleanedUrl && !cleanedUrl.startsWith('http://') && !cleanedUrl.startsWith('https://')) {
+      cleanedUrl = `https://${cleanedUrl}.supabase.co`;
+    }
+
+    if (cleanedUrl) {
+      localStorage.setItem('speakcoach_supabase_url', cleanedUrl);
     } else {
       localStorage.removeItem('speakcoach_supabase_url');
     }
@@ -169,6 +181,8 @@ export const SupabaseConfigModal: React.FC<SupabaseConfigModalProps> = ({
       setSavedSuccess(false);
       onCredentialsUpdated();
       onClose();
+      // Reload to re-initialize supabase client with new env
+      window.location.reload();
     }, 800);
   };
 
