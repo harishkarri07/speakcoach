@@ -29,6 +29,9 @@ export interface Profile {
   domain_focus?: string;
   target_role?: string;
   target_roles?: string[];
+  coach_tone?: 'supportive' | 'strict' | 'realistic' | 'executive';
+  pacing_preference?: 'normal' | 'deliberate' | 'rapid';
+  filler_strictness?: 'relaxed' | 'balanced' | 'strict';
   created_at?: string;
   updated_at?: string;
 }

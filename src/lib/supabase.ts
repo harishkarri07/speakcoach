@@ -46,19 +46,22 @@ const STORAGE_PREFIX = 'speakcoach_';
 const DEFAULT_DEMO_USER: User = {
   id: '00000000-0000-0000-0000-000000000001',
   app_metadata: {},
-  user_metadata: { full_name: 'Alex Rivera' },
+  user_metadata: { full_name: '' },
   aud: 'authenticated',
   created_at: new Date().toISOString(),
-  email: 'alex.cybersec@university.edu',
+  email: '',
 };
 
 const DEFAULT_DEMO_PROFILE: Profile = {
   id: '00000000-0000-0000-0000-000000000001',
-  email: 'alex.cybersec@university.edu',
-  full_name: 'Alex Rivera',
+  email: '',
+  full_name: '',
   college_year: '3rd Year B.Tech',
   domain_focus: 'Cybersecurity & SOC Operations',
-  target_role: 'Associate Security Analyst / Red Team Intern',
+  target_role: 'Associate Security Analyst',
+  coach_tone: 'realistic',
+  pacing_preference: 'normal',
+  filler_strictness: 'balanced',
 };
 
 const DEFAULT_DEMO_STREAK: Streak = {
@@ -75,7 +78,14 @@ export const localDb = {
   getProfile(): Profile {
     const raw = localStorage.getItem(`${STORAGE_PREFIX}profile`);
     if (raw) {
-      try { return JSON.parse(raw); } catch (e) { /* ignore */ }
+      try {
+        const parsed = JSON.parse(raw);
+        if (parsed.full_name === 'Alex Rivera') {
+          parsed.full_name = '';
+          localStorage.setItem(`${STORAGE_PREFIX}profile`, JSON.stringify(parsed));
+        }
+        return parsed;
+      } catch (e) { /* ignore */ }
     }
     localStorage.setItem(`${STORAGE_PREFIX}profile`, JSON.stringify(DEFAULT_DEMO_PROFILE));
     return DEFAULT_DEMO_PROFILE;
@@ -197,21 +207,60 @@ export class DataService {
 
   static async getProfile(userId: string): Promise<Profile> {
     if (supabase) {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', userId)
-        .single();
-      if (!error && data) return data as Profile;
+      try {
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', userId)
+          .single();
+        if (!error && data) {
+          const prof = data as Profile;
+          if (prof.full_name === 'Alex Rivera') prof.full_name = '';
+          return prof;
+        }
+      } catch {}
     }
 
     const stored = localStorage.getItem(`${STORAGE_PREFIX}profile`);
     if (stored) {
       try {
-        return JSON.parse(stored);
+        const p = JSON.parse(stored);
+        if (p.full_name === 'Alex Rivera') {
+          p.full_name = '';
+          localStorage.setItem(`${STORAGE_PREFIX}profile`, JSON.stringify(p));
+        }
+        return p;
       } catch {}
     }
     return DEFAULT_DEMO_PROFILE;
+  }
+
+  static async updateProfile(profileUpdates: Partial<Profile> & { id: string }): Promise<Profile> {
+    const existing = await this.getProfile(profileUpdates.id);
+    const updated: Profile = {
+      ...existing,
+      ...profileUpdates,
+      updated_at: new Date().toISOString(),
+    };
+
+    if (supabase) {
+      try {
+        const { data, error } = await supabase
+          .from('profiles')
+          .upsert(updated)
+          .select()
+          .single();
+        if (!error && data) {
+          localStorage.setItem(`${STORAGE_PREFIX}profile`, JSON.stringify(data));
+          return data as Profile;
+        }
+      } catch (err) {
+        console.warn('Supabase upsert profile fallback to local:', err);
+      }
+    }
+
+    localStorage.setItem(`${STORAGE_PREFIX}profile`, JSON.stringify(updated));
+    return updated;
   }
 
   static async getStreak(userId: string): Promise<Streak> {

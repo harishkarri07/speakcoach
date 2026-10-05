@@ -4,6 +4,7 @@ import { ChatView } from './components/ChatView';
 import { AuthModal } from './components/AuthModal';
 import { ModeSelectorModal } from './components/ModeSelectorModal';
 import { VoicePreviewModal } from './components/VoicePreviewModal';
+import { SettingsModal } from './components/SettingsModal';
 import { CoachingMode, TechnicalDomain, Profile, Streak, Session } from './types/database';
 import { DataService } from './lib/supabase';
 
@@ -21,6 +22,7 @@ export default function App() {
   // Modals
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [isModeSelectorOpen, setIsModeSelectorOpen] = useState(false);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isVoicePreviewOpen, setIsVoicePreviewOpen] = useState(false);
 
   // Initial Auth Check
@@ -77,6 +79,15 @@ export default function App() {
     setIsAuthModalOpen(true);
   };
 
+  const handleSaveProfile = async (updates: Partial<Profile>) => {
+    const profileId = profile?.id || user?.id || '00000000-0000-0000-0000-000000000001';
+    const updated = await DataService.updateProfile({
+      id: profileId,
+      ...updates,
+    });
+    setProfile(updated);
+  };
+
   const handleSelectMode = (mode: CoachingMode, domain?: TechnicalDomain) => {
     setCurrentMode(mode);
     if (domain) {
@@ -103,6 +114,7 @@ export default function App() {
         streak={streak}
         currentMode={currentMode}
         onOpenModeSelector={() => setIsModeSelectorOpen(true)}
+        onOpenSettings={() => setIsSettingsOpen(true)}
         onSignOut={handleSignOut}
       />
 
@@ -130,6 +142,13 @@ export default function App() {
         currentMode={currentMode}
         technicalDomain={technicalDomain}
         onSelectMode={handleSelectMode}
+      />
+
+      <SettingsModal
+        isOpen={isSettingsOpen}
+        onClose={() => setIsSettingsOpen(false)}
+        profile={profile}
+        onSaveProfile={handleSaveProfile}
       />
 
       <VoicePreviewModal

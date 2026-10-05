@@ -111,7 +111,7 @@ export const MODE_INSTRUCTIONS: Record<CoachingMode, string> = {
 };
 
 export function buildCoachSystemPrompt(params: PromptContextParams): string {
-  const userName = params.profile?.full_name?.trim() || 'Alex (Cybersecurity Student)';
+  const userName = params.profile?.full_name?.trim() || 'Student Candidate';
   const sessionMinutes = params.sessionMinutes || 15;
   const streakCount = params.streak?.current ?? 0;
   const streakInfo = streakCount > 0 ? `${streakCount} days in a row 🔥` : 'Starting a fresh streak today! 🚀';
@@ -134,6 +134,23 @@ export function buildCoachSystemPrompt(params: PromptContextParams): string {
     .replace(/{{session_minutes}}/g, sessionMinutes.toString())
     .replace(/{{streak_info}}/g, streakInfo)
     .replace(/{{progress_context}}/g, progressContext);
+
+  // Append user profile context if set
+  if (params.profile) {
+    if (params.profile.target_role) {
+      prompt += `\n\n### CANDIDATE TARGET ROLE: ${params.profile.target_role}`;
+    }
+    if (params.profile.college_year) {
+      prompt += `\n### ACADEMIC STAGE: ${params.profile.college_year}`;
+    }
+    if (params.profile.coach_tone) {
+      prompt += `\n### COACH PERSONA & TONE STYLE: ${params.profile.coach_tone.toUpperCase()}
+Follow this tone closely throughout the session.`;
+    }
+    if (params.profile.filler_strictness === 'strict') {
+      prompt += `\n### STRICT FILLER RULE: Actively point out any filler words (um, uh, like) in your feedback.`;
+    }
+  }
 
   // Append mode instructions
   const modeInstruction = MODE_INSTRUCTIONS[params.mode] || MODE_INSTRUCTIONS.free_talk;

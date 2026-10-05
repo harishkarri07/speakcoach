@@ -1,5 +1,5 @@
 import React from 'react';
-import { Sparkles, Flame, LogOut, SlidersHorizontal } from 'lucide-react';
+import { Sparkles, Flame, LogOut, SlidersHorizontal, Settings, User } from 'lucide-react';
 import { CoachingMode, Profile, Streak } from '../types/database';
 
 interface NavbarProps {
@@ -7,6 +7,7 @@ interface NavbarProps {
   streak: Streak | null;
   currentMode: CoachingMode;
   onOpenModeSelector: () => void;
+  onOpenSettings: () => void;
   onSignOut: () => void;
 }
 
@@ -29,9 +30,12 @@ export const Navbar: React.FC<NavbarProps> = ({
   streak,
   currentMode,
   onOpenModeSelector,
+  onOpenSettings,
   onSignOut,
 }) => {
   const currentModeMeta = MODE_LABELS[currentMode] || MODE_LABELS.free_talk;
+
+  const displayName = profile?.full_name ? profile.full_name : 'Edit Profile';
 
   return (
     <header className="sticky top-0 z-30 w-full border-b border-zinc-800/80 bg-zinc-950/80 backdrop-blur-md">
@@ -51,7 +55,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               </span>
             </div>
             <p className="hidden text-xs text-zinc-400 sm:block">
-              {profile?.full_name ? `${profile.full_name} • 3rd Year` : 'AI Communication Mentor'}
+              {profile?.full_name ? `${profile.full_name} • ${profile.college_year || 'Cybersecurity'}` : 'Personalized AI Speech Mentor'}
             </p>
           </div>
         </div>
@@ -70,8 +74,23 @@ export const Navbar: React.FC<NavbarProps> = ({
           </button>
         </div>
 
-        {/* Right Actions: Practice Streak & User */}
+        {/* Right Actions: Profile & Settings, Practice Streak & User */}
         <div className="flex items-center gap-2 sm:gap-3">
+          {/* Profile & Settings Button */}
+          <button
+            onClick={onOpenSettings}
+            className="group flex items-center gap-2 rounded-xl border border-zinc-800 bg-zinc-900/90 hover:bg-zinc-850 hover:border-cyan-500/50 px-2.5 py-1.5 text-xs font-medium text-zinc-200 transition-all focus:outline-none shadow-sm"
+            title="Edit Profile & AI Coach Preferences"
+          >
+            <div className="flex h-5 w-5 items-center justify-center rounded-lg bg-gradient-to-tr from-cyan-500 to-blue-600 text-[10px] font-bold text-white uppercase shadow-sm">
+              {profile?.full_name ? profile.full_name.charAt(0) : <User className="h-3 w-3" />}
+            </div>
+            <span className="max-w-[120px] truncate text-white group-hover:text-cyan-300 transition-colors">
+              {displayName}
+            </span>
+            <Settings className="h-3.5 w-3.5 text-zinc-400 group-hover:text-cyan-400 transition-colors" />
+          </button>
+
           {/* Practice Streak Badge */}
           <div
             className="flex items-center gap-1.5 rounded-lg border border-amber-500/20 bg-amber-500/10 px-2.5 py-1 text-xs font-semibold text-amber-400"

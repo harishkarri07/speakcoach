@@ -92,22 +92,23 @@ export const ChatView: React.FC<ChatViewProps> = ({
   };
 
   const getInitialGreeting = (mode: CoachingMode, domain: TechnicalDomain, name?: string): string => {
-    const studentName = name || 'Alex';
+    const studentName = name?.trim() ? name.trim() : '';
+    const addressedName = studentName ? ` ${studentName}` : '';
     switch (mode) {
       case 'hr_interview':
-        return `Hello ${studentName}! I'll be conducting your HR screening interview today. To start off on the right foot, tell me a little bit about yourself and what sparked your passion for cybersecurity?`;
+        return `Hello${addressedName}! I'll be conducting your HR screening interview today. To start off on the right foot, tell me a little bit about yourself and what sparked your passion for cybersecurity?`;
       case 'technical_interview':
-        return `Welcome ${studentName}. We're diving into ${domain.replace(/_/g, ' ').toUpperCase()} today. Let's start with a foundational concept: Walk me through what happens under the hood during a TLS 1.3 handshake, and how it protects data in transit compared to earlier versions?`;
+        return `Welcome${addressedName}. We're diving into ${domain.replace(/_/g, ' ').toUpperCase()} today. Let's start with a foundational concept: Walk me through what happens under the hood during a TLS 1.3 handshake, and how it protects data in transit compared to earlier versions?`;
       case 'gd_simulator':
-        return `Welcome to the Group Discussion round. Our topic today is: "Zero Trust Architecture vs Legacy Perimeter Defense in Cloud-First Enterprises". I have Rohan and Sneha with us. ${studentName}, would you like to open the discussion with your perspective?`;
+        return `Welcome to the Group Discussion round. Our topic today is: "Zero Trust Architecture vs Legacy Perimeter Defense in Cloud-First Enterprises". I have Rohan and Sneha with us.${studentName ? ` ${studentName}, would you like to open the discussion?` : ' Would you like to open the discussion with your perspective?'}`;
       case 'incident_scenario':
-        return `🚨 P1 Incident Alert: At 02:45 UTC, our EDR alerted on an encoded PowerShell execution on Domain Controller 01 spawning cmd.exe under NT AUTHORITY\\SYSTEM. ${studentName}, you are Incident Lead. What are your immediate containment and triage priorities?`;
+        return `🚨 P1 Incident Alert: At 02:45 UTC, our EDR alerted on an encoded PowerShell execution on Domain Controller 01 spawning cmd.exe under NT AUTHORITY\\SYSTEM.${addressedName ? ` ${studentName}, you are Incident Lead.` : ' You are Incident Lead.'} What are your immediate containment and triage priorities?`;
       case 'explain_to_manager':
-        return `Hi ${studentName}! As the VP of Operations, I keep hearing about this new "ransomware attack surface" in our supply chain. In non-technical terms, what does this actually mean for our customer shipments, and why should we allocate budget to it?`;
+        return `Hi${addressedName}! As the VP of Operations, I keep hearing about this new "ransomware attack surface" in our supply chain. In non-technical terms, what does this actually mean for our customer shipments, and why should we allocate budget to it?`;
       case 'rapid_fire':
         return `Rapid-fire articulation round ready! 30 seconds per answer. Question 1: What is the core difference between symmetric and asymmetric encryption, and where would you use each? Go!`;
       default:
-        return `Hey ${studentName}! Great to see you. How has your week in 3rd year been treating you? What's on your mind today—want to discuss a recent security topic, or just chat casually in English?`;
+        return `Hey${addressedName}! Great to see you. How is your prep going? What's on your mind today—want to discuss a recent security topic, or just chat casually in English?`;
     }
   };
 
