@@ -1,16 +1,13 @@
 import React from 'react';
-import { Sparkles, Flame, Database, UserCheck, LogOut, SlidersHorizontal, ShieldCheck } from 'lucide-react';
+import { Sparkles, Flame, LogOut, SlidersHorizontal } from 'lucide-react';
 import { CoachingMode, Profile, Streak } from '../types/database';
-import { isSupabaseConfigured } from '../lib/supabase';
 
 interface NavbarProps {
   profile: Profile | null;
   streak: Streak | null;
   currentMode: CoachingMode;
   onOpenModeSelector: () => void;
-  onOpenSupabaseConfig: () => void;
   onSignOut: () => void;
-  onOpenPromptInspector: () => void;
 }
 
 export const MODE_LABELS: Record<CoachingMode, { title: string; badge: string; color: string }> = {
@@ -32,9 +29,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   streak,
   currentMode,
   onOpenModeSelector,
-  onOpenSupabaseConfig,
   onSignOut,
-  onOpenPromptInspector,
 }) => {
   const currentModeMeta = MODE_LABELS[currentMode] || MODE_LABELS.free_talk;
 
@@ -75,18 +70,8 @@ export const Navbar: React.FC<NavbarProps> = ({
           </button>
         </div>
 
-        {/* Right Actions: Streak, Supabase status, Prompt inspect, User */}
+        {/* Right Actions: Practice Streak & User */}
         <div className="flex items-center gap-2 sm:gap-3">
-          {/* Prompt context inspector */}
-          <button
-            onClick={onOpenPromptInspector}
-            className="hidden sm:flex items-center gap-1.5 rounded-lg border border-zinc-800 bg-zinc-900/60 px-2.5 py-1 text-xs text-zinc-400 hover:border-zinc-700 hover:text-zinc-200 transition-colors"
-            title="Inspect AI System Prompt & Injected Placeholders"
-          >
-            <ShieldCheck className="h-3.5 w-3.5 text-emerald-400" />
-            <span>Prompt Rules</span>
-          </button>
-
           {/* Practice Streak Badge */}
           <div
             className="flex items-center gap-1.5 rounded-lg border border-amber-500/20 bg-amber-500/10 px-2.5 py-1 text-xs font-semibold text-amber-400"
@@ -95,20 +80,6 @@ export const Navbar: React.FC<NavbarProps> = ({
             <Flame className="h-4 w-4 fill-amber-500 text-amber-500 animate-bounce" style={{ animationDuration: '2s' }} />
             <span>{streak?.current ?? 0}d</span>
           </div>
-
-          {/* Supabase Connection Status Indicator */}
-          <button
-            onClick={onOpenSupabaseConfig}
-            className={`flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs transition-colors ${
-              isSupabaseConfigured
-                ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20'
-                : 'border-zinc-800 bg-zinc-900/80 text-zinc-400 hover:border-zinc-700 hover:text-zinc-200'
-            }`}
-            title={isSupabaseConfigured ? 'Supabase Connected with RLS' : 'Local Storage Mode - Click to configure Supabase'}
-          >
-            <Database className="h-3.5 w-3.5" />
-            <span className="hidden md:inline">{isSupabaseConfigured ? 'Supabase RLS' : 'DB / Schema'}</span>
-          </button>
 
           {/* User Sign Out */}
           {profile && (

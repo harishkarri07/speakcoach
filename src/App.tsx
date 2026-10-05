@@ -3,12 +3,9 @@ import { Navbar } from './components/Navbar';
 import { ChatView } from './components/ChatView';
 import { AuthModal } from './components/AuthModal';
 import { ModeSelectorModal } from './components/ModeSelectorModal';
-import { SupabaseConfigModal } from './components/SupabaseConfigModal';
-import { PromptInspectorModal } from './components/PromptInspectorModal';
 import { VoicePreviewModal } from './components/VoicePreviewModal';
 import { CoachingMode, TechnicalDomain, Profile, Streak, Session } from './types/database';
-import { DataService, isSupabaseConfigured } from './lib/supabase';
-import { Database, Sparkles } from 'lucide-react';
+import { DataService } from './lib/supabase';
 
 export default function App() {
   const [user, setUser] = useState<any | null>(null);
@@ -24,8 +21,6 @@ export default function App() {
   // Modals
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [isModeSelectorOpen, setIsModeSelectorOpen] = useState(false);
-  const [isSupabaseConfigOpen, setIsSupabaseConfigOpen] = useState(!isSupabaseConfigured);
-  const [isPromptInspectorOpen, setIsPromptInspectorOpen] = useState(false);
   const [isVoicePreviewOpen, setIsVoicePreviewOpen] = useState(false);
 
   // Initial Auth Check
@@ -108,34 +103,8 @@ export default function App() {
         streak={streak}
         currentMode={currentMode}
         onOpenModeSelector={() => setIsModeSelectorOpen(true)}
-        onOpenSupabaseConfig={() => setIsSupabaseConfigOpen(true)}
         onSignOut={handleSignOut}
-        onOpenPromptInspector={() => setIsPromptInspectorOpen(true)}
       />
-
-      {/* Supabase Connection Banner */}
-      {!isSupabaseConfigured && (
-        <div className="bg-gradient-to-r from-emerald-950/60 via-cyan-950/40 to-slate-900 border-b border-emerald-500/20 px-4 py-2.5">
-          <div className="mx-auto max-w-7xl flex flex-wrap items-center justify-between gap-3 text-xs">
-            <div className="flex items-center gap-2 text-emerald-300">
-              <span className="flex h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
-              <Database className="h-4 w-4 text-emerald-400 shrink-0" />
-              <span>
-                <strong>Supabase Setup:</strong> Connect your Supabase project to enable cloud PostgreSQL persistence and Auth.
-              </span>
-            </div>
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => setIsSupabaseConfigOpen(true)}
-                className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-black font-semibold px-3 py-1 text-xs transition shadow-sm"
-              >
-                <Sparkles className="h-3 w-3" />
-                Enter Supabase URL & Anon Key
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Main Chat Interface */}
       <main className="mx-auto max-w-7xl">
@@ -161,22 +130,6 @@ export default function App() {
         currentMode={currentMode}
         technicalDomain={technicalDomain}
         onSelectMode={handleSelectMode}
-      />
-
-      <SupabaseConfigModal
-        isOpen={isSupabaseConfigOpen}
-        onClose={() => setIsSupabaseConfigOpen(false)}
-        onCredentialsUpdated={loadUserData}
-      />
-
-      <PromptInspectorModal
-        isOpen={isPromptInspectorOpen}
-        onClose={() => setIsPromptInspectorOpen(false)}
-        profile={profile}
-        streak={streak}
-        currentMode={currentMode}
-        technicalDomain={technicalDomain}
-        recentSessions={recentSessions}
       />
 
       <VoicePreviewModal

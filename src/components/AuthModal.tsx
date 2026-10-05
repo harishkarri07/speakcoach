@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { useAuth } from '../lib/auth-context';
 import { Sparkles, Mail, Shield, CheckCircle, ArrowRight, Lock, User, AlertCircle } from 'lucide-react';
-import { isSupabaseConfigured } from '../lib/supabase';
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -73,7 +72,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onAuthent
           </p>
           <div className="mt-2 inline-flex items-center gap-1.5 rounded-full border border-slate-800 bg-slate-950/80 px-2.5 py-0.5 text-[11px] text-slate-300">
             <Shield className="h-3 w-3 text-emerald-400" />
-            <span>{isSupabaseConfigured ? 'Supabase Auth (PostgreSQL)' : 'Local Evaluation Mode'}</span>
+            <span>Secure Student Practice Space</span>
           </div>
         </div>
 
@@ -175,7 +174,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onAuthent
 
         <div className="mt-5 pt-3 border-t border-slate-800/80 text-[10px] text-slate-500 flex items-center justify-center gap-1.5">
           <Shield className="w-3.5 h-3.5 text-emerald-400" />
-          <span>Row Level Security (RLS) & Client Data Isolation active</span>
+          <span>Private and encrypted session practice</span>
         </div>
       </div>
     </div>
