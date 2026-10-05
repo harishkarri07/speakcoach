@@ -1,0 +1,6 @@
+{
+  "name": "SpeakCoach",
+  "description": "Personal AI English speaking and interview coach for cybersecurity students, featuring real-time interactive conversations and deep session analysis.",
+  "requestFramePermissions": ["microphone"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
