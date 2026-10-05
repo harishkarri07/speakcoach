@@ -118,8 +118,8 @@ export default function App() {
         onSignOut={handleSignOut}
       />
 
-      {/* Main Chat Interface */}
-      <main className="mx-auto max-w-7xl">
+      {/* Main Chat Interface with Real-time Interview Tips Sidebar */}
+      <main className="mx-auto w-full max-w-[1600px] px-0 sm:px-2 md:px-4">
         <ChatView
           currentMode={currentMode}
           technicalDomain={technicalDomain}
@@ -127,6 +127,7 @@ export default function App() {
           streak={streak}
           onOpenModeSelector={() => setIsModeSelectorOpen(true)}
           onSwitchToVoice={() => setIsVoicePreviewOpen(true)}
+          onDomainChange={(domain) => setTechnicalDomain(domain)}
         />
       </main>
 

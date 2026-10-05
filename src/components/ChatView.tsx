@@ -1,9 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Send, Bot, User, RotateCcw, Clock, Copy, Check, Sparkles, Mic, CornerDownLeft, AlertCircle } from 'lucide-react';
+import { Send, Bot, User, RotateCcw, Clock, Copy, Check, Sparkles, Mic, CornerDownLeft, AlertCircle, Lightbulb } from 'lucide-react';
 import { CoachingMode, TechnicalDomain, Session, Message, Profile, Streak } from '../types/database';
 import { DataService } from '../lib/supabase';
 import { buildCoachSystemPrompt } from '../lib/prompt-loader';
 import { MODE_LABELS } from './Navbar';
+import { InterviewTipsPanel } from './InterviewTipsPanel';
+import { DOMAIN_INTERVIEW_TIPS } from '../data/interviewTips';
 
 interface ChatViewProps {
   currentMode: CoachingMode;
@@ -12,6 +14,7 @@ interface ChatViewProps {
   streak: Streak | null;
   onOpenModeSelector: () => void;
   onSwitchToVoice: () => void;
+  onDomainChange?: (domain: TechnicalDomain) => void;
 }
 
 export const ChatView: React.FC<ChatViewProps> = ({
@@ -21,6 +24,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
   streak,
   onOpenModeSelector,
   onSwitchToVoice,
+  onDomainChange,
 }) => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputText, setInputText] = useState('');
@@ -29,6 +33,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
   const [sessionSeconds, setSessionSeconds] = useState(0);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [apiError, setApiError] = useState<string | null>(null);
+  const [isTipsPanelOpen, setIsTipsPanelOpen] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -312,52 +317,71 @@ export const ChatView: React.FC<ChatViewProps> = ({
   const promptSuggestions = SUGGESTED_PROMPTS[currentMode] || SUGGESTED_PROMPTS.free_talk;
 
   return (
-    <div className="flex h-[calc(100vh-4rem)] flex-col bg-zinc-950 text-zinc-100">
-      {/* Session Sub-header Bar */}
-      <div className="flex items-center justify-between border-b border-zinc-800/80 bg-zinc-900/50 px-4 py-2.5 backdrop-blur-sm">
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2">
-            <span className="text-xs font-semibold text-white">{currentModeMeta.title}</span>
-            <span className="rounded-full bg-zinc-800 px-2 py-0.5 text-[10px] text-zinc-400">
-              {currentModeMeta.badge}
-            </span>
-            {currentMode === 'technical_interview' && (
-              <span className="hidden sm:inline-block rounded-full bg-emerald-950/80 border border-emerald-800/60 px-2 py-0.5 text-[10px] text-emerald-400">
-                {technicalDomain.replace(/_/g, ' ')}
+    <div className="relative flex h-[calc(100vh-4rem)] overflow-hidden bg-zinc-950 text-zinc-100">
+      {/* Main Chat Workspace */}
+      <div className="flex flex-1 flex-col overflow-hidden min-w-0">
+        {/* Session Sub-header Bar */}
+        <div className="flex items-center justify-between border-b border-zinc-800/80 bg-zinc-900/50 px-4 py-2.5 backdrop-blur-sm">
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-semibold text-white">{currentModeMeta.title}</span>
+              <span className="rounded-full bg-zinc-800 px-2 py-0.5 text-[10px] text-zinc-400">
+                {currentModeMeta.badge}
               </span>
-            )}
-          </div>
-        </div>
-
-        <div className="flex items-center gap-3">
-          {/* Duration Clock */}
-          <div className="flex items-center gap-1.5 text-xs text-zinc-400">
-            <Clock className="h-3.5 w-3.5 text-cyan-400" />
-            <span className="font-mono text-zinc-300">{formatTimer(sessionSeconds)}</span>
+              {currentMode === 'technical_interview' && (
+                <span className="hidden sm:inline-block rounded-full bg-emerald-950/80 border border-emerald-800/60 px-2 py-0.5 text-[10px] text-emerald-400">
+                  {technicalDomain.replace(/_/g, ' ')}
+                </span>
+              )}
+            </div>
           </div>
 
-          {/* New Session Button */}
-          <button
-            onClick={startNewSession}
-            disabled={isStreaming}
-            className="flex items-center gap-1 rounded-lg border border-zinc-800 bg-zinc-900 px-2.5 py-1 text-xs text-zinc-400 hover:border-zinc-700 hover:text-white transition-colors disabled:opacity-50"
-            title="Start fresh session"
-          >
-            <RotateCcw className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline">New Session</span>
-          </button>
+          <div className="flex items-center gap-2 sm:gap-3">
+            {/* Interview Tips Sidebar Toggle */}
+            <button
+              onClick={() => setIsTipsPanelOpen(!isTipsPanelOpen)}
+              className={`flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs font-semibold transition-all ${
+                isTipsPanelOpen
+                  ? 'border-amber-500/50 bg-amber-500/10 text-amber-300'
+                  : 'border-zinc-800 bg-zinc-900 text-zinc-400 hover:border-zinc-700 hover:text-white'
+              }`}
+              title="Toggle domain interview tips & cheatsheet"
+            >
+              <Lightbulb className="h-3.5 w-3.5 text-amber-400" />
+              <span className="hidden sm:inline">Interview Tips</span>
+              <span className="rounded-full bg-amber-500/20 px-1 text-[9px] text-amber-300 font-bold uppercase">
+                {DOMAIN_INTERVIEW_TIPS[technicalDomain]?.badge?.split(' ')[0] || 'Tips'}
+              </span>
+            </button>
 
-          {/* Live Voice Mode Switcher (Phase 2 preview badge) */}
-          <button
-            onClick={onSwitchToVoice}
-            className="flex items-center gap-1.5 rounded-lg bg-gradient-to-r from-cyan-500 to-blue-600 px-3 py-1 text-xs font-semibold text-white shadow-md shadow-cyan-500/20 hover:from-cyan-400 hover:to-blue-500 transition-all"
-            title="Switch to Live Voice Conversation"
-          >
-            <Mic className="h-3.5 w-3.5" />
-            <span>Talk Mode</span>
-          </button>
+            {/* Duration Clock */}
+            <div className="flex items-center gap-1.5 text-xs text-zinc-400">
+              <Clock className="h-3.5 w-3.5 text-cyan-400" />
+              <span className="font-mono text-zinc-300">{formatTimer(sessionSeconds)}</span>
+            </div>
+
+            {/* New Session Button */}
+            <button
+              onClick={startNewSession}
+              disabled={isStreaming}
+              className="flex items-center gap-1 rounded-lg border border-zinc-800 bg-zinc-900 px-2.5 py-1 text-xs text-zinc-400 hover:border-zinc-700 hover:text-white transition-colors disabled:opacity-50"
+              title="Start fresh session"
+            >
+              <RotateCcw className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">New Session</span>
+            </button>
+
+            {/* Live Voice Mode Switcher (Phase 2 preview badge) */}
+            <button
+              onClick={onSwitchToVoice}
+              className="flex items-center gap-1.5 rounded-lg bg-gradient-to-r from-cyan-500 to-blue-600 px-3 py-1 text-xs font-semibold text-white shadow-md shadow-cyan-500/20 hover:from-cyan-400 hover:to-blue-500 transition-all"
+              title="Switch to Live Voice Conversation"
+            >
+              <Mic className="h-3.5 w-3.5" />
+              <span>Talk Mode</span>
+            </button>
+          </div>
         </div>
-      </div>
 
       {/* Error Notice */}
       {apiError && (
@@ -496,6 +520,22 @@ export const ChatView: React.FC<ChatViewProps> = ({
           </div>
         </div>
       </div>
+    </div>
+
+    {/* Real-time Domain Interview Tips Sidebar */}
+      {isTipsPanelOpen && (
+        <div className="fixed inset-y-16 right-0 z-40 w-full sm:w-96 md:w-[420px] lg:static lg:z-auto h-full shrink-0 animate-in slide-in-from-right duration-200">
+          <InterviewTipsPanel
+            currentDomain={technicalDomain}
+            isOpen={isTipsPanelOpen}
+            onClose={() => setIsTipsPanelOpen(false)}
+            onDomainChange={onDomainChange}
+            onSelectPrompt={(promptText) => {
+              handleSendMessage(promptText);
+            }}
+          />
+        </div>
+      )}
     </div>
   );
 };
