@@ -31,6 +31,7 @@ SpeakCoach is designed for a single user (a 3rd-year cybersecurity student) who 
 | **Rate Limiting & DoS Defense** | Server API endpoint `POST /api/chat` enforces client IP and Bearer-token token-bucket rate limiting with 429 Retry-After response headers. *[Planned]*: Per-session granularity endpoints (`/api/session/*`). |
 | **Input Validation & Sanitization** | All incoming request bodies are validated on the server using `zod` schemas (`server/schemas.ts`), explicitly blocking client injection of system instructions or unlisted coaching modes. |
 | **Network Exposure** | The server binds to `127.0.0.1` in development (localhost only) and `0.0.0.0` in production, overridable via the `HOST` env var — so dev servers are never exposed to the local network by default. |
+| **Content Security Policy** | Production serves a strict CSP (`script-src 'self'` with no `'unsafe-inline'`, `frame-ancestors 'none'`, `connect-src` limited to `'self'` + the Supabase project over https/wss) with HSTS; development disables CSP/HSTS entirely so Vite's inline React-refresh script and HMR websocket are not blocked. |
 
 ---
 

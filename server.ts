@@ -2,13 +2,13 @@ import express, { NextFunction, Request, Response } from 'express';
 import path from 'path';
 import { GoogleGenAI } from '@google/genai';
 import dotenv from 'dotenv';
-import helmet from 'helmet';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import type { Profile, Session, Streak } from './src/types/database';
 import { compileCoachPrompt } from './server/prompt-loader';
 import { createRateLimiter } from './server/rate-limiter';
 import { ChatRequestSchema, type ChatRequest } from './server/schemas';
 import { createRequireAuth, DEMO_USER_ID, type AuthedUser } from './server/auth';
+import { createSecurityHeaders } from './server/security-headers';
 
 dotenv.config();
 
@@ -34,26 +34,9 @@ const FRIENDLY_COACH_ERROR = 'Coach is unavailable right now. Please try again.'
 app.disable('x-powered-by');
 app.set('trust proxy', Number(process.env.TRUST_PROXY ?? 1));
 
-app.use(
-  helmet({
-    contentSecurityPolicy: {
-      directives: {
-        defaultSrc: ["'self'"],
-        baseUri: ["'self'"],
-        fontSrc: ["'self'", 'data:'],
-        formAction: ["'self'"],
-        frameAncestors: ["'none'"],
-        imgSrc: ["'self'", 'data:', 'blob:'],
-        objectSrc: ["'none'"],
-        scriptSrc: ["'self'"],
-        styleSrc: ["'self'", "'unsafe-inline'"],
-        connectSrc: IS_PROD ? ["'self'"] : ["'self'", 'ws:', 'wss:'],
-        workerSrc: ["'self'", 'blob:'],
-      },
-    },
-    crossOriginEmbedderPolicy: false,
-  })
-);
+// Security headers: dev disables CSP/HSTS so Vite's inline React-refresh script
+// and HMR websocket work; production serves the strict CSP (see server/security-headers.ts).
+app.use(createSecurityHeaders({ isProd: IS_PROD, supabaseUrl: SUPABASE_URL }));
 
 app.use(express.json({ limit: '1mb' }));
 
