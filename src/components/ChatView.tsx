@@ -453,8 +453,9 @@ export const ChatView: React.FC<ChatViewProps> = ({
             <button
               onClick={startNewSession}
               disabled={isStreaming}
-              className="flex items-center gap-1 rounded-lg border border-zinc-800 bg-zinc-900 px-2.5 py-1 text-xs text-zinc-400 hover:border-zinc-700 hover:text-white transition-colors disabled:opacity-50"
+              className="flex items-center gap-1 rounded-lg border border-zinc-800 bg-zinc-900 px-2.5 py-1 text-xs text-zinc-400 hover:border-zinc-700 hover:text-white transition-colors disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500"
               title="Start fresh session"
+              aria-label="Start fresh session"
             >
               <RotateCcw className="h-3.5 w-3.5" />
               <span className="hidden sm:inline">New Session</span>
@@ -538,8 +539,9 @@ export const ChatView: React.FC<ChatViewProps> = ({
                     </span>
                     <button
                       onClick={() => handleCopy(message.id, message.text)}
-                      className="ml-3 inline-flex items-center gap-1 text-zinc-400 hover:text-white transition-colors"
+                      className="ml-3 inline-flex items-center gap-1 text-zinc-400 hover:text-white transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-cyan-500 rounded"
                       title="Copy text"
+                      aria-label="Copy message text"
                     >
                       {copiedId === message.id ? (
                         <Check className="h-3 w-3 text-emerald-400" />

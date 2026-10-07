@@ -230,13 +230,37 @@ BEGIN
         SELECT 1 FROM information_schema.columns
         WHERE table_schema = 'public' AND table_name = 'daily_plan' AND column_name = 'date'
     ) THEN
-        UPDATE public.daily_plan SET plan_date = "date" WHERE plan_date IS NULL;
+        UPDATE public.daily_plan SET plan_date = "date";
+
+        IF EXISTS (
+            SELECT 1 FROM information_schema.columns
+            WHERE table_schema = 'public' AND table_name = 'daily_plan' AND column_name = 'completed'
+        ) THEN
+            UPDATE public.daily_plan SET is_completed = COALESCE(completed, FALSE);
+        END IF;
+
+        IF EXISTS (
+            SELECT 1 FROM information_schema.columns
+            WHERE table_schema = 'public' AND table_name = 'daily_plan' AND column_name = 'tasks'
+        ) THEN
+            UPDATE public.daily_plan
+            SET plan_data = tasks
+            WHERE tasks IS NOT NULL AND jsonb_typeof(tasks) = 'object';
+        END IF;
+
         ALTER TABLE public.daily_plan DROP CONSTRAINT IF EXISTS daily_plan_user_date_key;
         ALTER TABLE public.daily_plan DROP CONSTRAINT IF EXISTS daily_plan_user_id_date_key;
         ALTER TABLE public.daily_plan DROP COLUMN IF EXISTS "date";
         ALTER TABLE public.daily_plan DROP COLUMN IF EXISTS tasks;
         ALTER TABLE public.daily_plan DROP COLUMN IF EXISTS completed;
+
+        -- Remove any duplicates before adding the unique constraint
+        DELETE FROM public.daily_plan a
+        USING public.daily_plan b
+        WHERE a.ctid < b.ctid AND a.user_id = b.user_id AND a.plan_date = b.plan_date;
+
         ALTER TABLE public.daily_plan ADD CONSTRAINT daily_plan_user_date_key UNIQUE (user_id, plan_date);
+        ALTER TABLE public.daily_plan ALTER COLUMN plan_date SET NOT NULL;
     END IF;
 
     -- messages: legacy 2025 file had no user_id and no role CHECK for updates.
@@ -308,6 +332,9 @@ CREATE INDEX IF NOT EXISTS idx_messages_session_id ON public.messages(session_id
 CREATE INDEX IF NOT EXISTS idx_messages_user_id ON public.messages(user_id);
 CREATE INDEX IF NOT EXISTS idx_messages_ts ON public.messages(ts ASC);
 CREATE INDEX IF NOT EXISTS idx_reward_wallet_user ON public.reward_wallet(user_id);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_reward_wallet_user_reward
+    ON public.reward_wallet(user_id, reward_id)
+    WHERE reward_id IS NOT NULL;
 CREATE INDEX IF NOT EXISTS idx_daily_plan_user_date ON public.daily_plan(user_id, plan_date);
 
 -- ---------------------------------------------------------------------------
@@ -384,12 +411,24 @@ CREATE POLICY "Users can view their own messages"
 
 CREATE POLICY "Users can insert their own messages"
     ON public.messages FOR INSERT
-    WITH CHECK (auth.uid() = user_id);
+    WITH CHECK (
+        auth.uid() = user_id
+        AND EXISTS (
+            SELECT 1 FROM public.sessions s
+            WHERE s.id = session_id AND s.user_id = auth.uid()
+        )
+    );
 
 CREATE POLICY "Users can update their own messages"
     ON public.messages FOR UPDATE
     USING (auth.uid() = user_id)
-    WITH CHECK (auth.uid() = user_id);
+    WITH CHECK (
+        auth.uid() = user_id
+        AND EXISTS (
+            SELECT 1 FROM public.sessions s
+            WHERE s.id = session_id AND s.user_id = auth.uid()
+        )
+    );
 
 CREATE POLICY "Users can delete their own messages"
     ON public.messages FOR DELETE
@@ -418,22 +457,29 @@ CREATE POLICY "Authenticated users can view rewards catalog"
     TO authenticated
     USING (true);
 
+-- Reward wallet: users can inspect their unlocked items or claim new ones when
+-- qualified by streak requirements. Client UPDATE and DELETE policies are omitted
+-- because earned rewards and claims must be immutable.
 CREATE POLICY "Users can view their own reward wallet"
     ON public.reward_wallet FOR SELECT
     USING (auth.uid() = user_id);
 
 CREATE POLICY "Users can insert into their own reward wallet"
     ON public.reward_wallet FOR INSERT
-    WITH CHECK (auth.uid() = user_id);
-
-CREATE POLICY "Users can update their own reward wallet"
-    ON public.reward_wallet FOR UPDATE
-    USING (auth.uid() = user_id)
-    WITH CHECK (auth.uid() = user_id);
-
-CREATE POLICY "Users can delete from their own reward wallet"
-    ON public.reward_wallet FOR DELETE
-    USING (auth.uid() = user_id);
+    WITH CHECK (
+        auth.uid() = user_id
+        AND status = 'claimed'
+        AND (
+            reward_id IS NULL
+            OR EXISTS (
+                SELECT 1
+                FROM public.rewards r, public.streaks s
+                WHERE r.id = reward_id
+                  AND s.user_id = auth.uid()
+                  AND r.streak_required <= s.longest_streak
+            )
+        )
+    );
 
 CREATE POLICY "Users can view their own daily plans"
     ON public.daily_plan FOR SELECT
@@ -475,7 +521,7 @@ CREATE POLICY "Users can delete their own settings"
 CREATE OR REPLACE FUNCTION public.set_updated_at()
 RETURNS TRIGGER
 LANGUAGE plpgsql
-SECURITY DEFINER
+SECURITY INVOKER
 SET search_path = ''
 AS $$
 BEGIN
@@ -487,7 +533,7 @@ $$;
 DO $$
 DECLARE t text;
 BEGIN
-    FOREACH t IN ARRAY ARRAY['profiles','streaks','daily_plan','settings','reward_wallet']
+    FOREACH t IN ARRAY ARRAY['profiles','streaks','daily_plan','settings']
     LOOP
         EXECUTE format(
             'DROP TRIGGER IF EXISTS set_updated_at_%I ON public.%I',
@@ -539,6 +585,9 @@ DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
 CREATE TRIGGER on_auth_user_created
     AFTER INSERT ON auth.users
     FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
+
+REVOKE EXECUTE ON FUNCTION public.handle_new_user() FROM PUBLIC, anon, authenticated;
+REVOKE EXECUTE ON FUNCTION public.set_updated_at() FROM PUBLIC, anon, authenticated;
 
 -- ---------------------------------------------------------------------------
 -- Seed the global rewards catalog (idempotent)

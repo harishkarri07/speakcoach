@@ -8,12 +8,15 @@ import type { Profile, Session, Streak } from './src/types/database';
 import { compileCoachPrompt } from './server/prompt-loader';
 import { createRateLimiter } from './server/rate-limiter';
 import { ChatRequestSchema, type ChatRequest } from './server/schemas';
+import { createRequireAuth, DEMO_USER_ID, type AuthedUser } from './server/auth';
 
 dotenv.config();
 
 const app = express();
 const PORT = Number(process.env.PORT) || 3000;
 const IS_PROD = process.env.NODE_ENV === 'production';
+// Dev binds to localhost only; production binds all interfaces. Override with HOST.
+const HOST = process.env.HOST || (IS_PROD ? '0.0.0.0' : '127.0.0.1');
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || '';
 const SUPABASE_URL = process.env.SUPABASE_URL || '';
@@ -27,21 +30,6 @@ const GEMINI_MODELS = (process.env.GEMINI_MODELS || 'gemini-2.5-flash,gemini-fla
   .filter(Boolean);
 
 const FRIENDLY_COACH_ERROR = 'Coach is unavailable right now. Please try again.';
-
-interface AuthedUser {
-  id: string;
-  email?: string;
-}
-
-declare global {
-  namespace Express {
-    interface Request {
-      user?: AuthedUser;
-      authClient?: SupabaseClient;
-      isDemoUser?: boolean;
-    }
-  }
-}
 
 app.disable('x-powered-by');
 app.set('trust proxy', Number(process.env.TRUST_PROXY ?? 1));
@@ -112,59 +100,29 @@ async function verifyModelAvailability(): Promise<void> {
 // The client may never supply a system prompt: z.strictObject rejects it.
 
 // ---------------------------------------------------------------------------
-// Authentication
+// Authentication — implementation in ./server/auth.ts (unit-tested in tests/)
 // ---------------------------------------------------------------------------
-const DEMO_USER_ID = '00000000-0000-0000-0000-000000000001';
-
 const serverSupabase: SupabaseClient | null = IS_SUPABASE_CONFIGURED
   ? createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
       auth: { persistSession: false, autoRefreshToken: false },
     })
   : null;
 
-function extractBearerToken(req: Request): string | null {
-  const header = req.headers.authorization;
-  if (!header || typeof header !== 'string') return null;
-  const [scheme, token] = header.split(' ');
-  if (!token || scheme?.toLowerCase() !== 'bearer') return null;
-  return token.trim() || null;
-}
-
-async function requireAuth(req: Request, res: Response, next: NextFunction) {
-  try {
-    const token = extractBearerToken(req);
-
-    if (token && serverSupabase) {
-      const { data, error } = await serverSupabase.auth.getUser(token);
-      if (!error && data?.user) {
-        req.user = { id: data.user.id, email: data.user.email };
-        req.isDemoUser = false;
-        req.authClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-          auth: { persistSession: false, autoRefreshToken: false },
-          global: { headers: { Authorization: `Bearer ${token}` } },
-        });
-        return next();
-      }
-    }
-
-    if (ALLOW_DEMO_MODE) {
-      req.user = { id: DEMO_USER_ID, email: 'demo@speakcoach.local' };
-      req.isDemoUser = true;
-      return next();
-    }
-
-    return res.status(401).json({
-      error: 'Please sign in to practice with your coach.',
-      code: 'AUTH_REQUIRED',
-    });
-  } catch (err) {
-    console.error('[auth] verification failed:', err instanceof Error ? err.message : String(err));
-    return res.status(401).json({
-      error: 'Please sign in to practice with your coach.',
-      code: 'AUTH_REQUIRED',
-    });
-  }
-}
+const requireAuth = createRequireAuth({
+  allowDemoMode: ALLOW_DEMO_MODE,
+  demoUserId: DEMO_USER_ID,
+  verifyToken: async (token: string): Promise<AuthedUser | null> => {
+    if (!serverSupabase) return null;
+    const { data, error } = await serverSupabase.auth.getUser(token);
+    if (error || !data?.user) return null;
+    return { id: data.user.id, email: data.user.email };
+  },
+  createAuthClient: (token: string): SupabaseClient =>
+    createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+      auth: { persistSession: false, autoRefreshToken: false },
+      global: { headers: { Authorization: `Bearer ${token}` } },
+    }),
+});
 
 // ---------------------------------------------------------------------------
 // Coach context: loaded server-side under the caller's own JWT (RLS applies)
@@ -361,8 +319,8 @@ async function start() {
 
   await verifyModelAvailability();
 
-  app.listen(PORT, '0.0.0.0', () => {
-    console.log(`SpeakCoach server running on http://0.0.0.0:${PORT}`);
+  app.listen(PORT, HOST, () => {
+    console.log(`SpeakCoach server running on http://${HOST}:${PORT}`);
   });
 }
 

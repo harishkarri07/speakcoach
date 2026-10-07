@@ -1,13 +1,16 @@
-import { useState } from 'react';
+import { useState, lazy, Suspense } from 'react';
 import { Navbar } from './components/Navbar';
 import { ChatView } from './components/ChatView';
 import { AuthModal } from './components/AuthModal';
 import { ModeSelectorModal } from './components/ModeSelectorModal';
 import { VoicePreviewModal } from './components/VoicePreviewModal';
 import { SettingsModal } from './components/SettingsModal';
-import { AnalyticsDashboard } from './components/AnalyticsDashboard';
 import { CoachingMode, TechnicalDomain, Profile } from './types/database';
 import { useAuth } from './lib/auth-context';
+
+const AnalyticsDashboard = lazy(() =>
+  import('./components/AnalyticsDashboard').then((m) => ({ default: m.AnalyticsDashboard }))
+);
 
 export default function App() {
   const { user, profile, streak, loading, isDemoMode, signOut, updateProfile } = useAuth();
@@ -80,13 +83,24 @@ export default function App() {
             onDomainChange={(domain) => setTechnicalDomain(domain)}
           />
         ) : (
-          <AnalyticsDashboard
-            userId={user?.id || profile?.id || ''}
-            profile={profile}
-            streak={streak}
-            onReturnToPractice={() => setActiveView('practice')}
-            onSelectDrill={handleSelectMode}
-          />
+          <Suspense
+            fallback={
+              <div className="flex min-h-[500px] w-full items-center justify-center text-zinc-400">
+                <div className="flex flex-col items-center gap-2">
+                  <div className="h-6 w-6 animate-spin rounded-full border-2 border-cyan-500 border-t-transparent" />
+                  <span className="text-xs">Loading analytics...</span>
+                </div>
+              </div>
+            }
+          >
+            <AnalyticsDashboard
+              userId={user?.id || profile?.id || ''}
+              profile={profile}
+              streak={streak}
+              onReturnToPractice={() => setActiveView('practice')}
+              onSelectDrill={handleSelectMode}
+            />
+          </Suspense>
         )}
       </main>
 

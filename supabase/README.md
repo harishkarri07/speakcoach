@@ -59,8 +59,80 @@ npx supabase gen types typescript --project-id <your-project-ref> > src/types/su
 The hand-written `src/types/database.ts` is the source of truth for the app; if you
 regenerate, reconcile it against the table above rather than replacing it wholesale.
 
+## Verify after applying
+
+Run these verification queries in the SQL Editor to validate that RLS, policies, triggers, and timestamp updates are active and healthy:
+
+### 1. Confirm RLS is enabled on all 8 tables
+```sql
+SELECT tablename, rowsecurity
+FROM pg_tables
+WHERE schemaname = 'public'
+  AND tablename IN ('profiles','sessions','messages','streaks','rewards','reward_wallet','daily_plan','settings');
+-- All rows should show rowsecurity = true
+```
+
+### 2. Confirm all expected policies exist
+```sql
+SELECT tablename, policyname, permissive, roles, cmd, qual, with_check
+FROM pg_policies
+WHERE schemaname = 'public'
+ORDER BY tablename, cmd;
+```
+
+### 3. Confirm `updated_at` triggers exist
+```sql
+SELECT event_object_table AS table_name, trigger_name, action_statement
+FROM information_schema.triggers
+WHERE trigger_schema = 'public'
+  AND trigger_name LIKE 'set_updated_at_%';
+-- Should return 4 rows: profiles, streaks, daily_plan, settings
+```
+
+### 4. Verify `updated_at` update behaviour on each table (in a throwaway project / test user)
+```sql
+-- Replace with an existing test user id
+DO $$
+DECLARE
+    test_uid UUID := '00000000-0000-0000-0000-000000000001';
+    t1 TIMESTAMPTZ;
+    t2 TIMESTAMPTZ;
+BEGIN
+    -- profiles
+    SELECT updated_at INTO t1 FROM public.profiles WHERE id = test_uid;
+    PERFORM pg_sleep(0.02);
+    UPDATE public.profiles SET full_name = full_name WHERE id = test_uid;
+    SELECT updated_at INTO t2 FROM public.profiles WHERE id = test_uid;
+    ASSERT t2 > t1, 'updated_at failed to increment on profiles';
+
+    -- streaks
+    SELECT updated_at INTO t1 FROM public.streaks WHERE user_id = test_uid;
+    PERFORM pg_sleep(0.02);
+    UPDATE public.streaks SET current_streak = current_streak WHERE user_id = test_uid;
+    SELECT updated_at INTO t2 FROM public.streaks WHERE user_id = test_uid;
+    ASSERT t2 > t1, 'updated_at failed to increment on streaks';
+
+    -- settings
+    SELECT updated_at INTO t1 FROM public.settings WHERE user_id = test_uid;
+    PERFORM pg_sleep(0.02);
+    UPDATE public.settings SET theme = theme WHERE user_id = test_uid;
+    SELECT updated_at INTO t2 FROM public.settings WHERE user_id = test_uid;
+    ASSERT t2 > t1, 'updated_at failed to increment on settings';
+
+    -- daily_plan
+    INSERT INTO public.daily_plan (user_id, plan_date) VALUES (test_uid, CURRENT_DATE)
+    ON CONFLICT (user_id, plan_date) DO NOTHING;
+    SELECT updated_at INTO t1 FROM public.daily_plan WHERE user_id = test_uid AND plan_date = CURRENT_DATE;
+    PERFORM pg_sleep(0.02);
+    UPDATE public.daily_plan SET is_completed = is_completed WHERE user_id = test_uid AND plan_date = CURRENT_DATE;
+    SELECT updated_at INTO t2 FROM public.daily_plan WHERE user_id = test_uid AND plan_date = CURRENT_DATE;
+    ASSERT t2 > t1, 'updated_at failed to increment on daily_plan';
+END $$;
+```
+
 ## Environment
 
 The browser only needs the public vars (`VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`).
 The server verifies JWTs with `SUPABASE_URL` + `SUPABASE_ANON_KEY` (non-`VITE_`,
 server-side only). Never commit `.env`.
+

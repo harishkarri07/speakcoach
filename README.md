@@ -40,6 +40,7 @@ Copy `.env.example` to `.env` and fill in real values. **Never commit `.env`.**
 | `GEMINI_MODELS` | server | no | Comma-separated fallback order, e.g. `gemini-2.5-flash,gemini-2.0-flash`. Defaults are verified against `ai.models.list()` at startup. |
 | `APP_URL` | server | no | Public base URL (OAuth/magic-link redirects). |
 | `PORT` | server | no | HTTP port (default `3000`). |
+| `HOST` | server | no | Interface to bind. Dev defaults to localhost only (`127.0.0.1`); production binds all interfaces (`0.0.0.0`). |
 | `TRUST_PROXY` | server | no | Number of proxies in front of the server (default `1`). Drives `express`'s `trust proxy` setting used by the rate limiter. |
 | `ALLOW_DEMO_MODE` | server | no | `true` allows unauthenticated `/api/chat` requests **only when `NODE_ENV !== 'production'`**, using a demo profile. |
 | `SUPABASE_URL` | server | no | Supabase project URL used by the server-side client (auth verification). |

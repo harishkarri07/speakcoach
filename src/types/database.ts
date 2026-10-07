@@ -144,13 +144,14 @@ export interface DailyPlan {
     review_done: boolean;
   };
   is_completed: boolean;
+  updated_at?: string;
 }
 
 export interface Settings {
   user_id: string;
   store_audio: boolean; // default OFF
-  preferred_session_minutes?: number;
-  session_length_minutes?: number;
+  preferred_session_minutes?: number; // canonical practice duration
+  session_length_minutes?: number; // legacy alias for backward compatibility
   preferred_voice: string;
   target_domains?: string[];
   theme?: string;
@@ -160,3 +161,4 @@ export interface Settings {
 }
 
 export type UserSettings = Settings;
+

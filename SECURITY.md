@@ -24,17 +24,20 @@ SpeakCoach is designed for a single user (a 3rd-year cybersecurity student) who 
 
 | Threat | Mitigation Architecture |
 |---|---|
-| **Gemini API Key Leakage** | The Gemini API key (`GEMINI_API_KEY`) is stored strictly in server-side environment variables. It is never exposed in client bundles (`VITE_` variables do not include it). For Live voice interactions, only short-lived ephemeral tokens are issued or proxied through the authenticated server. |
-| **Model Output Injection (XSS)** | All LLM responses are treated as untrusted text. Responses are parsed defensively and rendered exclusively through plain-text nodes or sanitized text formatters—never using `dangerouslySetInnerHTML`. Analysis JSON is validated against strict Zod schemas before consumption. |
-| **Unauthorized DB Access** | Supabase Postgres enforces Row Level Security (RLS) on 100% of tables (`profiles`, `sessions`, `messages`, `streaks`, `rewards`, `reward_wallet`, `daily_plan`, `settings`). Every query checks `auth.uid() = user_id`. |
-| **Transcript & Audio Privacy** | By default, **audio recording storage is turned OFF (`store_audio: false`)**. No audio data is persisted without explicit user opt-in in settings. No transcripts are logged to server console or third-party analytical trackers. |
-| **Rate Limiting & DoS Defense** | Server API endpoints (`/api/chat/stream`, `/api/session/*`) enforce IP and user-rate limiting with exponential backoff on abuse. |
-| **Input Validation & Sanitization** | All incoming request bodies are validated on the server using `zod` schemas before executing any Gemini API call or database interaction. |
+| **Gemini API Key Leakage** | The Gemini API key (`GEMINI_API_KEY`) is stored strictly in server-side environment variables. It is never exposed in client bundles (`VITE_` variables do not include it). `server.ts` proxies all Gemini requests via server-side SSE. *[Planned]*: For bidirectional low-latency Gemini Live audio, short-lived ephemeral tokens will be proxied through the server. |
+| **Model Output Injection (XSS)** | All LLM responses are treated as untrusted text. SSE responses are parsed defensively and rendered exclusively through plain-text nodes or sanitized text formatters—never using `dangerouslySetInnerHTML`. Client inputs and server chat payloads are strictly validated against Zod schemas. *[Planned]*: Dedicated post-session analysis JSON endpoints. |
+| **Unauthorized DB Access** | Supabase Postgres enforces Row Level Security (RLS) on 100% of tables (`profiles`, `sessions`, `messages`, `streaks`, `rewards`, `reward_wallet`, `daily_plan`, `settings`). Every query checks `auth.uid() = user_id`. Note: Sessions, streaks, and scores are self-reported by the client (RLS only isolates users from each other) and must not be used for competitive leaderboards. |
+| **Transcript & Audio Privacy** | Audio capture uses browser Web Speech APIs; audio recordings are never streamed or persisted without explicit user opt-in (`store_audio: false` by default). No transcripts are logged to server console or third-party analytical trackers. |
+| **Rate Limiting & DoS Defense** | Server API endpoint `POST /api/chat` enforces client IP and Bearer-token token-bucket rate limiting with 429 Retry-After response headers. *[Planned]*: Per-session granularity endpoints (`/api/session/*`). |
+| **Input Validation & Sanitization** | All incoming request bodies are validated on the server using `zod` schemas (`server/schemas.ts`), explicitly blocking client injection of system instructions or unlisted coaching modes. |
+| **Network Exposure** | The server binds to `127.0.0.1` in development (localhost only) and `0.0.0.0` in production, overridable via the `HOST` env var — so dev servers are never exposed to the local network by default. |
 
 ---
 
-## 3. Ephemeral Live Voice Architecture
+## 3. [Planned] Ephemeral Live Voice Architecture
+*Note: Currently, voice interaction uses the client-side Web Speech API and synthesis, with text delivered over server-side SSE.*
 1. Client requests an active voice session through an authenticated server endpoint.
 2. The server verifies the Supabase session token or authentication header.
 3. Audio is piped directly over a secure WebSocket using 16kHz PCM (inbound) and 24kHz PCM (outbound).
 4. Audio buffers are streamed in real time and discarded from memory immediately after transcription and response synthesis.
+
